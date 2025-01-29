@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lossless PNG Compression</title>
+</head>
+<body>
+    <h2>Upload a PNG for Lossless Compression</h2>
+    <input type="file" id="fileInput" accept="image/png">
+    <button id="compressButton" disabled>Compress</button>
+    <a id="downloadLink" style="display: none">Download Compressed PNG</a>
+
+    <script type="module">
+        import oxipng from 'https://cdn.jsdelivr.net/npm/oxipng-wasm';
+        import zopfli from 'https://cdn.jsdelivr.net/npm/zopfli-wasm';
+
+        const fileInput = document.getElementById("fileInput");
+        const compressButton = document.getElementById("compressButton");
+        const downloadLink = document.getElementById("downloadLink");
+
+        let uploadedFile = null;
+
+        fileInput.addEventListener("change", (event) => {
+            uploadedFile = event.target.files[0];
+            compressButton.disabled = !uploadedFile;
+        });
+
+        compressButton.addEventListener("click", async () => {
+            if (!uploadedFile) return;
+            
+            const reader = new FileReader();
+            reader.readAsArrayBuffer(uploadedFile);
+            
+            reader.onload = async (event) => {
+                let fileData = new Uint8Array(event.target.result);
+
+                try {
+                    // Step 1: Lossless Optimization with oxipng
+                    fileData = await oxipng(fileData, { level: 6, strip: "safe" });
+
+                    // Step 2: Maximum Lossless Compression with zopfli
+                    fileData = await zopfli(fileData, { numIterations: 500 });
+
+                    // Create a downloadable file
+                    const blob = new Blob([fileData], { type: "image/png" });
+                    const url = URL.createObjectURL(blob);
+                    
+                    downloadLink.href = url;
+                    downloadLink.download = "compressed.png";
+                    downloadLink.style.display = "block";
+                    downloadLink.innerText = "Download Compressed PNG";
+                } catch (error) {
+                    console.error("Compression error:", error);
+                }
+            };
+        });
+    </script>
+</body>
+</html>
